@@ -2,9 +2,16 @@
 
 from scapy.all import *
 import hashlib
-import random
-from random import uniform
 import argparse
+
+
+def test_stream(pkt):
+    try:
+        a = pkt.sport
+        b = pkt.dport
+    except:
+        return False
+    return True
 
 
 def xor_str(a,b):
@@ -25,41 +32,28 @@ def packet_symhash(pkt):
 
 def process_packets(pr,string):
     hashlist=[]
-
     for p in pr:
-        #stupid test to check for ports
-        try:
-            a = p.sport
-            b = p.dport
-        except:
-            pass
-        #if IPv6 in p:
-        #    pass
         if p.payload:
-            #print(p.summary())
             if string.lower() in str(p.payload).lower():
-#                print("[+] Found match: " + p.summary())
+                print("[+] Found match: " + p.summary())
                 if not packet_symhash(p) in hashlist:
-#                    print("[d] Added hash to hashlist")
                     hashlist.append(packet_symhash(p))
-
     return hashlist
+
 
 def get_hashpackets(pr,hashlist,outputpackets):
     for p in pr:
-        if ((ARP in p) or (ICMP in p)):
-            pass
-        elif packet_symhash(p) in hashlist:
+        if not test_stream(p):
+            continue
+        if packet_symhash(p) in hashlist:
             outputpackets.append(p)
 
+
 def main():
-
     parser = argparse.ArgumentParser()
-
     parser.add_argument("-i","--inputpcap",help="input pcap", dest="inputfile",required=True)
     parser.add_argument("-o","--outputpcap",help="output pcap", dest="outputfile",required=True)
     parser.add_argument("-s","--string",help="search string", dest="string",required=True)
-    
     args = parser.parse_args()
 
     inpcap  = args.inputfile
@@ -83,6 +77,7 @@ def main():
     if outputpackets:
         print("[i] Writing matched streams to " + outpcap)
         wrpcap(outpcap,outputpackets)
+
 
 if __name__ == '__main__':
     main()
